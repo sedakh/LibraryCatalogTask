@@ -23,7 +23,7 @@ The program is implemented to manage books, users and their relationships.
     name= name surname   |name = John Doe 
   
   
-  ### Functional Specification ###
+  ### Functional Specifications ###
 - [x] User checkout book
     - Allow user to checkout a book. The value of available copies of the book should
     be reduced. Save the time of check-out to further check if the book is overdue
