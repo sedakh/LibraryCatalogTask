@@ -1,0 +1,12 @@
+[0156012197]
+title = The Little Prince
+pages = 93
+copies = 4
+available_copies = 1
+
+[0140449264]
+title = The Count of Monte Cristo
+pages = 1276
+copies = 3
+available_copies = 3
+
