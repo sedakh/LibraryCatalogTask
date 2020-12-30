@@ -1,6 +1,7 @@
-import configparser
 import io
 import sys
+from datetime import datetime, timedelta
+import configparser
 from Book import Book
 
 
@@ -16,20 +17,24 @@ class User:
     def __init__(self, id, name):
         self.idNumber = id
         self.nameSurname = name
-        # TODO revisit if need to have name and surname separate
+
+    def getId(self):
+        return self.idNumber
+
+    def getName(self):
+        return self.nameSurname
 
     def __repr__(self):
         return "User id: {} name: {}".format(self.idNumber, self.nameSurname)
 
 
 class LibraryCatalog:
-    # read from file book data and set
-    # keep here book to available count dict
     def __init__(self, userFileName="userFile.txt", bookFileName="bookFile.txt"):
         self.userArray = []
         self.booksArray = []
         self.availableCopies = {}
         self.bookToUserId = {}
+        self.userIdToTime = {}
         self.bookSubscribers = {}
         if isFileExists(userFileName):
             self.readUsers(userFileName)
@@ -37,9 +42,6 @@ class LibraryCatalog:
             self.readBooks(bookFileName)
         self.userFileName = userFileName
         self.bookFileName = bookFileName
-        # self.books = []           #the real book object
-        # self.bookToCount = []     #dict from book name to available count
-        # self.checkedOutBooks = [] #keep from real book to checkout day
 
     def readUsers(self, userFileName):
         if userFileName:
@@ -64,16 +66,22 @@ class LibraryCatalog:
         self.availableCopies[bookName] -= 1
         if bookName not in self.bookToUserId:
             self.bookToUserId[bookName] = [userId]
+            self.userIdToTime[userId] = [(bookName, datetime.date().today())]
         else:
             self.bookToUserId[bookName].append(userId)
+            self.userIdToTime[userId].append((datetime.date().today()))
 
     def returnBook(self, bookName, userId):
         self.availableCopies[bookName] += 1
-        self.bookToUserId[bookName].remove(userId)
+        del (self.bookToUserId[bookName])
+        for item in self.userIdToTime[userId]:
+            if item[0] == bookName:
+                del (self.userIdToTime[userId][item])
+
         if bookName in self.bookSubscribers:
             self.checkoutBook(bookName, self.bookSubscribers[bookName][0])
             self.bookSubscribers[bookName].pop(0)
-        return None
+
 
     def subscribe(self, bookName, userId):
         # Allow user to put a book in reserve if it is not available
@@ -88,17 +96,34 @@ class LibraryCatalog:
             return None
         return self.bookSubscribers[bookName]
 
-    def getUserOverdueBooks(self):
-        return None
+    def getUserOverdueBooks(self, userId):
+        result = []
+        for item in self.userIdToTime[userId]:
+            if (datetime.date().today() - item[1]).month > 3:
+                result.append(item[0])
+        return result
         # Get list of books that are overdue(more than 3 months checked out by the user)
 
-    def getFineForUser(self, userName):
-        return None
-        # - Get total fine for all the overdue books of the user
+    def getFineForUser(self, bookName, userId):
+        # Get total fine for all the overdue books of the user
+        result = 0
+        for item in self.userIdToTime[userId]:
+            if item[0] == bookName:
+                if (datetime.date().today() - item[1]).month > 3:
+                    delta = (datetime.date().today() - item[1]) - timedelta(days=90)
+                    result += 5 * (delta.days / 7)
+                    break
+        return result
 
-    def getTotalFine():
-        return None
-        # - Get total fine for all the overdue books of the user
+    def getTotalFine(self, userId):
+        # Get total fine for all the overdue books of the user
+        result = 0
+        for bookDatePair in self.userIdToTime[userId]:
+            for item in bookDatePair:
+                if (datetime.date().today() - item[1]).month > 3:
+                    delta = (datetime.date().today() - item[1]) - timedelta(days=90)
+                    result += 5 * (delta.days / 7)
+        return result
 
     def isBookAvailable(self, bookName):
         if bookName not in self.availableCopies:
@@ -110,18 +135,17 @@ class LibraryCatalog:
             return None
         self.bookToUserId[bookName]
 
-    def removeUser(self, userName):
-        # TODO check if user has fee's
-        self.userArray = [user for user in self.booksArray if user.getTitle() != userName]
+    def removeUser(self, userId):
+        self.userArray = [user for user in self.userArray if user.getId() != userId]
         for book in self.bookSubscribers:
-            if userName in self.bookSubscribers[book]:
-                self.bookSubscribers[book] = [user for user in self.bookSubscribers[book] if userName != user]
+            if userId in self.bookSubscribers[book]:
+                self.bookSubscribers[book] = [user for user in self.bookSubscribers[book] if userId != user]
 
         cp = configparser.ConfigParser()
         with open(self.userFileName, 'r') as fh:
             cp.readfp(fh)
-        cp.remove_section(userName)
-        with open(self.userFileName, 'w') as fh:
+        cp.remove_section(userId)
+        with open(self.userFileNamee, 'w') as fh:
             cp.write(fh)
 
     def addUser(self):
@@ -143,11 +167,15 @@ class LibraryCatalog:
                 sectionName = book.getISBN()
                 break
         if bookName in self.bookToUserId:
-            del(self.bookToUserId[bookName])
-        if bookName in self.bookSubscribers:
-            del(self.bookSubscribers[bookName])
-        self.booksArray = [book for book in self.booksArray if book.getTitle() != bookName]
+            userId = self.bookToUserId[bookName]
+            for item in self.userIdToTime[userId]:
+                if item[0] == bookName:
+                    del (self.userIdToTime[userId][item])
+            del (self.bookToUserId[bookName])
 
+        if bookName in self.bookSubscribers:
+            del (self.bookSubscribers[bookName])
+        self.booksArray = [book for book in self.booksArray if book.getTitle() != bookName]
 
         cp = configparser.ConfigParser()
         with open(self.bookFileName, 'r') as fh:
@@ -179,5 +207,6 @@ class LibraryCatalog:
         self.availableCopies[title] = available_count
         with open(self.bookFileName, "a") as booksFile:
             booksFile.write(
-                "\n[{}]\ntitle = {}\npages = {}\navailable_copies = {}\navailable_copies = {}".format(isbn, title, pages, count,
-                                                                                         available_count))
+                "\n[{}]\ntitle = {}\npages = {}\navailable_copies = {}\navailable_copies = {}".format(isbn, title,
+                                                                                                      pages, count,
+                                                                                                      available_count))
