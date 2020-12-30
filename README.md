@@ -39,12 +39,12 @@ The program is implemented to manage books, users and their relationships.
     - Get list of books that have been reserved by user and became available
 recently. The notification is shown only once after book becomes available, after
 displaying the notification it is deleted
-- [ ] Get overdue books of the user
+- [x] Get overdue books of the user
     - Get list of books that are overdue (more than 3 months checked out by the
 user)
-- [ ] Get fine for overdue book of the user
+- [x] Get fine for overdue book of the user
     - Get fine for the given book (5$ each week overdue) for the user
-- [ ] Get total fine
+- [x] Get total fine
     - Get total fine for all the overdue books of the user
 - [x] Check book is available
     - Check if available copy of book is present
